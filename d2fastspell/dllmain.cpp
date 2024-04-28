@@ -51,41 +51,54 @@ char toHexByte(BYTE byte)
 		return 'A' + (byte - 10);
 	}
 }
+
 // 根据特征码找函数地址
-DWORD FindFunctionAddress(const char* pattern)
+DWORD FindFunctionAddress(const char* pattern, size_t pattern_len)
 {
 	DWORD startAddress = 0x400000;
 	DWORD endAddress = 0x700000;
 	const BYTE* scanStart = reinterpret_cast<const BYTE*>(startAddress);
-	const BYTE* scanEnd = reinterpret_cast<const BYTE*>(endAddress) - strlen(pattern) / 3;
+	const BYTE* scanEnd = reinterpret_cast<const BYTE*>(endAddress) - pattern_len;
 
-	for (const BYTE* p = scanStart; p < scanEnd; ++p)
-	{
-		bool found = true;
-		size_t j = 0;
-		for (size_t i = 0; i < strlen(pattern); i += 3)
+	bool universal = false;
+	for (size_t k = 0; k < pattern_len; k++) {
+		if (pattern[k] == 0x00) {
+			universal = true;
+			break;
+		}
+	}
+	if (universal) {
+		for (const BYTE* p = scanStart; p < scanEnd; ++p)
 		{
-			if (pattern[i] != '?' && pattern[i] != toHexByte(p[j] >> 4))
+			bool found = true;
+			for (size_t i = 0; i < sizeof(pattern); ++i)
 			{
-				found = false;
-				break;
+
+				if (pattern[i] != 0 && pattern[i] != p[i]) {
+					found = false;
+					break;
+				}
 			}
-			if (pattern[i + 1] != '?' && pattern[i + 1] != toHexByte(p[j] & 0x0F))
+			if (found)
 			{
-				found = false;
-				break;
+				return reinterpret_cast<DWORD>(p);
 			}
-			j++;
+		}
+	}
+	else {
+		for (const BYTE* p = scanStart; p < scanEnd; ++p)
+		{
+			if (memcmp(p, pattern, pattern_len) == 0)
+			{
+				return reinterpret_cast<DWORD>(p);
+			}
 		}
 
-		if (found)
-		{
-			return reinterpret_cast<DWORD>(p);
-		}
 	}
 
 	return 0;
 }
+
 
 int castSpell()
 {
@@ -116,11 +129,10 @@ int __fastcall hooked_sub_changeSpell(int a1, DWORD* a2, int a3, int a4)
 extern "C" int _declspec(dllexport) __stdcall Init() {
 	OutputDebugString(TEXT("D2fastspell:Start init."));
 
-	// 设置你的特征码模式字符串
-	const char* pattern = "55 8B EC 51 83 7D 0C 09 8B";
+	const char pattern[] = { 0x55 ,0x8B ,0xEC ,0x51 ,0x83, 0x7D, 0x0C, 0x09, 0x8B };
 
 	// 查找函数地址
-	DWORD sub_changeSpell_address = FindFunctionAddress(pattern);
+	DWORD sub_changeSpell_address = FindFunctionAddress(pattern, sizeof(pattern));
 
 	if (sub_changeSpell_address != 0)
 	{
