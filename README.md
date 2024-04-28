@@ -1,4 +1,4 @@
-# 原版暗黑2一键施法
+# 原版暗黑2一键施法 (original Diablo 2 quick cast)
 
 我使用的是D2GL，在配置文件中添加d2fastspell.dll，如果不用D2GL，大箱子插件和MH插件都可以实现
 
